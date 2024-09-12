@@ -1,7 +1,7 @@
-from flask import jsonify,request
+from flask import jsonify,request,session
 from sqlalchemy.exc import SQLAlchemyError
 from models import User,UserSchema,Post,PostSchema,LikeSchema,Comment
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash,check_password_hash
 from marshmallow import ValidationError
 
 
@@ -12,9 +12,17 @@ def all_routes(app,db):
         try:
             user_data = request.get_json() # loading data from body
 
+            if not any([
+                user_data.get('username'),
+                user_data.get('email'),
+                user_data.get('password')
+            ]):
+                return jsonify({'Error': 'All fields must be filled.'})
+
             user_schema = UserSchema() # creating an instance of the userschema
 
-            user = user_schema.load(user_data,session=db.session) # loading and validating the passsed data
+            # validating the data passed and loading it intothe model data
+            user = user_schema.load(user_data,session=db.session) 
 
             hashed_password = generate_password_hash(user.password) # generatig a hash for the password
 
@@ -39,25 +47,63 @@ def all_routes(app,db):
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({'Error': str({e})})
-        
+
+    @app.route('/login', methods=['POST'])
+    def login():
+        """Authenticating a user before making a post"""
+        try:
+
+            # retrieving login data from body
+            data = request.get_json()
+            username = data.get('username')
+            password = data.get('password')
+
+            user = User.query.filter_by(username=username).first() # getting user from database
+
+            # checking if user exits and if the password matches
+            if user and check_password_hash(user.password,password):
+
+                session['uid'] = user.uid  # storing user id in a session
+
+                return jsonify({'Message': 'Logged in successfully'}),200
+            else:
+                return jsonify({'Error': 'Invalid Credentials'}),401
+            
+        except Exception as e:
+
+            return jsonify({'Error':str({e})})
+                  
 
     @app.route('/post',methods=['POST'])
     def post():
-        """creating a new post"""
+        """creating a new post by a logged in user"""
 
         try:
-            post_data = request.get_json()
+            if 'uid' not in session:
+                return jsonify({'Error':'You need to login first '})
+            
+            post_data = request.get_json() # getting post data
 
             post_schema = PostSchema()
 
+            # validate and deserialize input data
             post = post_schema.load(post_data,session=db.session)
 
-            db.session.add(post)
+            user_id = session['uid'] # getting uid from the session
+
+            # creating new post and connecting it to the uid in the session
+            new_post = Post(
+                content_ = post.content_,
+                uid = user_id
+            )
+
+            # adding new post to the data and commiting
+            db.session.add(new_post)
             db.session.commit()
 
             return jsonify({
                 'Message': 'Post successfully created',
-                'Post': post_schema.dump(post)}),201
+                'Post': post_schema.dump(new_post)}),201
         
         except ValidationError as err:
             return jsonify({'Validation Error': err.messages}),400
@@ -72,6 +118,10 @@ def all_routes(app,db):
         """getting all posts"""
 
         try:
+
+            if 'uid' not in session:
+                return jsonify({'Error':'You need to login first '})
+
             posts = Post.query.all()
 
             post_shema = PostSchema(many=True)

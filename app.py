@@ -18,9 +18,9 @@ def create_app():
         
         app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+        app.secret_key = os.getenv("secret_key")
 
         db.init_app(app)
-
 
         # routes
         from routes import all_routes
