@@ -10,6 +10,9 @@ class User(db.Model):
     email = db.Column(db.String(100), nullable = False)
     password = db.Column(db.String(255), nullable = False)
 
+    def __repr__(self) -> str:
+        return f'User: {self.username}, Email: {self.email}'
+
     # relationships
     posts = db.relationship('Post',backref='author',lazy='select')
     likes = db.relationship('Like', backref='liker', lazy='select')
@@ -23,7 +26,6 @@ class Post(db.Model):
     created_at = db.Column(db.DateTime, default=func.now())
 
     # relationships
-    # author = db.relationship('User',backref='posts',lazy='select')
     likes = db.relationship('Like', backref='liked_post', lazy='select')
     comments =db.relationship('Comment',backref='commented_post',lazy='select')
 
@@ -34,8 +36,8 @@ class Like(db.Model):
     pid = db.Column(db.Integer, db.ForeignKey('Posts.pid'), nullable = False)
 
     # relationships
-    user = db.relationship('User',backref='user_likes',lazy='select')
-    post = db.relationship('Post',backref='post_likes',lazy='select')
+    # user = db.relationship('User',backref='user_likes',lazy='select')
+    # post = db.relationship('Post',backref='post_likes',lazy='select')
 
 class Comment(db.Model):
     __tablename__ = 'Comments'
@@ -46,8 +48,8 @@ class Comment(db.Model):
     created_at = db.Column(db.DateTime, default=func.now())
 
     # relationships
-    user = db.relationship('User', backref='user_comments', lazy='select')
-    post = db.relationship('Post',backref='post_comments',lazy='select')
+    # user = db.relationship('User', backref='user_comments', lazy='select')
+    # post = db.relationship('Post',backref='post_comments',lazy='select')
 
 
 # Schemas for each model
@@ -68,7 +70,7 @@ class PostSchema(SQLAlchemyAutoSchema):
 
     content_ = fields.String(required=True,validate=validate.Length(min=1,max=300))
     created_at = fields.DateTime()
-    uid = fields.Integer(required=True)
+    uid = fields.Integer(dump_only=True)
     pid = fields.Integer(dump_only=True) 
 
 
