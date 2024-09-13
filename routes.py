@@ -10,36 +10,25 @@ def all_routes(app,db):
     def register():
         """creating a new user"""
         try:
-            user_data = request.get_json() # loading data from body
+            user_data = request.get_json() 
 
-            if not any([
-                user_data.get('username'),
-                user_data.get('email'),
-                user_data.get('password')
-            ]):
-                return jsonify({'Error': 'All fields must be filled.'})
+            user_schema = UserSchema() 
 
-            user_schema = UserSchema() # creating an instance of the userschema
-
-            # validating the data passed and loading it intothe model data
             user = user_schema.load(user_data,session=db.session) 
 
-            hashed_password = generate_password_hash(user.password) # generatig a hash for the password
+            hashed_password = generate_password_hash(user.password)
 
-            # creating a new user
             new_user = User (
-                username = user.username,
-                email = user.email,
+                username = user['username'],
+                email = user['email'],
                 password = hashed_password )
 
-            # adding the new user to the sessio and commiting to the database
             db.session.add(new_user)
             db.session.commit()
 
-            # Success message
             return jsonify({
                 'Message': f'{new_user.username}\'s account has been created.',
-                'user_id' : new_user.uid
+                # 'user_id' : new_user.uid
                 }),201
         
         except ValidationError as err:
@@ -53,28 +42,26 @@ def all_routes(app,db):
         """Authenticating a user before making a post"""
         try:
 
-            # retrieving login data from body
             data = request.get_json()
             username = data.get('username')
             password = data.get('password')
 
-            user = User.query.filter_by(username=username).first() # getting user from database
+            user = User.query.filter_by(username=username).first()
 
-            # checking if user exits and if the password matches
-            if user and check_password_hash(user.password,password):
-
-                session['uid'] = user.uid  # storing user id in a session
-
-                return jsonify({'Message': 'Logged in successfully'}),200
-            else:
-                return jsonify({'Error': 'Invalid Credentials'}),401
+            if not user:
+                return jsonify({'Login Error':'User doesn\'t exit. Create an account'}),401
+            if not check_password_hash(user.password, password):
+                return jsonify({'Login Error':'Username or password incorrect'}),401
             
+            session['uid'] = user.uid
+            return jsonify({'Message':'User logged in.'}),200        
+
         except Exception as e:
 
             return jsonify({'Error':str({e})})
                   
 
-    @app.route('/post',methods=['POST'])
+    @app.route('/create_post',methods=['POST'])
     def post():
         """creating a new post by a logged in user"""
 
@@ -82,22 +69,18 @@ def all_routes(app,db):
             if 'uid' not in session:
                 return jsonify({'Error':'You need to login first '})
             
-            post_data = request.get_json() # getting post data
+            post_data = request.get_json()
+            post_content = post_data.get('content_')
 
             post_schema = PostSchema()
 
-            # validate and deserialize input data
             post = post_schema.load(post_data,session=db.session)
 
-            user_id = session['uid'] # getting uid from the session
-
-            # creating new post and connecting it to the uid in the session
             new_post = Post(
-                content_ = post.content_,
-                uid = user_id
+                content_ = post['content_'],
+                uid = session['uid']
             )
 
-            # adding new post to the data and commiting
             db.session.add(new_post)
             db.session.commit()
 
@@ -113,7 +96,7 @@ def all_routes(app,db):
             return jsonify({'Error':str({e})}),500
         
 
-    @app.route('/all_posts')
+    @app.route('/get_all_posts')
     def get_all_posts():
         """getting all posts"""
 
@@ -136,3 +119,18 @@ def all_routes(app,db):
             return jsonify({'Validation Error': err.messages})
         except SQLAlchemyError as e:
             return jsonify({'Error': str({e})})
+        
+    @app.route('/posts/<int:id>/like',methods=['POST'])
+    def like_post():
+        """liking a post"""
+
+        try:
+            if  'uid' or 'pid' not in session:
+                return jsonify({'Error':'You need to be logged in and select a post.'})
+            
+            # liking logic
+
+        except ValidationError as err:
+            return jsonify({'Validation Error': err.messages})
+        except SQLAlchemyError as e:
+            return jsonify({'SQL Error':str({e})})

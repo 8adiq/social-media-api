@@ -29,15 +29,14 @@ class Post(db.Model):
     likes = db.relationship('Like', backref='liked_post', lazy='select')
     comments =db.relationship('Comment',backref='commented_post',lazy='select')
 
+    def __repr__(self):
+        return f'Post: {self.content_}, posted at {self.created_at}'
+
 class Like(db.Model):
     __tablename__ = 'Likes'
     lid = db.Column(db.Integer, primary_key = True)
     uid = db.Column(db.Integer, db.ForeignKey('Users.uid'), nullable = False)
     pid = db.Column(db.Integer, db.ForeignKey('Posts.pid'), nullable = False)
-
-    # relationships
-    # user = db.relationship('User',backref='user_likes',lazy='select')
-    # post = db.relationship('Post',backref='post_likes',lazy='select')
 
 class Comment(db.Model):
     __tablename__ = 'Comments'
@@ -47,31 +46,29 @@ class Comment(db.Model):
     pid = db.Column(db.Integer, db.ForeignKey('Posts.pid'), nullable = False)
     created_at = db.Column(db.DateTime, default=func.now())
 
-    # relationships
-    # user = db.relationship('User', backref='user_comments', lazy='select')
-    # post = db.relationship('Post',backref='post_comments',lazy='select')
-
 
 # Schemas for each model
 class UserSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = User
-        load_instance = True
 
     username = fields.String(required=True,validate=validate.Length(min=1,max=100))
     email = fields.Email(required=True)
     uid = fields.Integer(dump_only=True)
     password = fields.String(required=True,load_only=True)
 
+    # username and password validation here 
+
 class PostSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Post
-        load_instance = True
 
     content_ = fields.String(required=True,validate=validate.Length(min=1,max=300))
     created_at = fields.DateTime()
     uid = fields.Integer(dump_only=True)
     pid = fields.Integer(dump_only=True) 
+
+    # post content validation here
 
 
 class LikeSchema(SQLAlchemyAutoSchema):
