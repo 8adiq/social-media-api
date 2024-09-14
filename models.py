@@ -1,5 +1,7 @@
 from app import db
 from sqlalchemy.sql import func
+from werkzeug.security import generate_password_hash,check_password_hash
+
 
 class User(db.Model):
     __tablename__ = 'Users'
@@ -10,6 +12,20 @@ class User(db.Model):
 
     def __repr__(self) -> str:
         return f'User: {self.username}, Email: {self.email}'
+    
+    def set_password(self,password):
+        self.password = generate_password_hash(password)
+        
+    def check_password(self,password):
+        return check_password_hash(self.password,password)
+    
+    def authenticate(username,password):
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password):
+            return user
+        return None
+
+
 
     # relationships
     posts = db.relationship('Post',backref='author',lazy='select')
