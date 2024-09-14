@@ -1,6 +1,7 @@
 from flask import jsonify,request,session
 from sqlalchemy.exc import SQLAlchemyError
-from models import User,UserSchema,Post,PostSchema,LikeSchema,Comment
+from models import User,Post,Comment
+from serializer import UserSchema,PostSchema,LikeSchema
 from werkzeug.security import generate_password_hash,check_password_hash
 from marshmallow import ValidationError
 
@@ -15,20 +16,14 @@ def all_routes(app,db):
             user_schema = UserSchema() 
 
             user = user_schema.load(user_data,session=db.session) 
+            
+            user.set_password(user.password) #hashing password 
 
-            hashed_password = generate_password_hash(user.password)
-
-            new_user = User (
-                username = user['username'],
-                email = user['email'],
-                password = hashed_password )
-
-            db.session.add(new_user)
+            db.session.add(user)
             db.session.commit()
 
             return jsonify({
-                'Message': f'{new_user.username}\'s account has been created.',
-                # 'user_id' : new_user.uid
+                'Message': f'{user.username}\'s account has been created.',
                 }),201
         
         except ValidationError as err:
@@ -41,17 +36,14 @@ def all_routes(app,db):
     def login():
         """Authenticating a user before making a post"""
         try:
-
             data = request.get_json()
             username = data.get('username')
             password = data.get('password')
 
-            user = User.query.filter_by(username=username).first()
+            user = User.authenticate(username,password)
 
             if not user:
-                return jsonify({'Login Error':'User doesn\'t exit. Create an account'}),401
-            if not check_password_hash(user.password, password):
-                return jsonify({'Login Error':'Username or password incorrect'}),401
+                return jsonify({'Login Error':'Username or password is incorrect'}),401
             
             session['uid'] = user.uid
             return jsonify({'Message':'User logged in.'}),200        
