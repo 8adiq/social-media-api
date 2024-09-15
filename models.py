@@ -46,6 +46,7 @@ class Post(db.Model):
     def __repr__(self):
         return f'Post: {self.content_}, posted at {self.created_at}'
 
+
 class Like(db.Model):
     __tablename__ = 'Likes'
     lid = db.Column(db.Integer, primary_key = True)

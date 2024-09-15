@@ -2,8 +2,11 @@ from flask import jsonify,request,session
 from sqlalchemy.exc import SQLAlchemyError
 from models import User,Post,Comment
 from serializer import UserSchema,PostSchema,LikeSchema
-from werkzeug.security import generate_password_hash,check_password_hash
 from marshmallow import ValidationError
+from werkzeug.utils import secure_filename
+from utils import allowed_file,s3
+import os
+
 
 
 def all_routes(app,db):
@@ -49,7 +52,6 @@ def all_routes(app,db):
             return jsonify({'Message':'User logged in.'}),200        
 
         except Exception as e:
-
             return jsonify({'Error':str({e})})
                   
 
@@ -61,17 +63,35 @@ def all_routes(app,db):
             if 'uid' not in session:
                 return jsonify({'Error':'You need to login first '})
             
-            post_data = request.get_json()
-            post_content = post_data.get('content_')
+            if 'file' not in request.files:
+                post_data = request.get_json()
 
-            post_schema = PostSchema()
+                post_schema = PostSchema(only=('text','created_at'))
 
-            post = post_schema.load(post_data,session=db.session)
+                post = post_schema.load(post_data,session=db.session)
 
-            new_post = Post(
-                content_ = post['content_'],
-                uid = session['uid']
-            )
+                new_post = Post(
+                    text = post['text'],
+                    uid = session['uid']
+                )
+            else:
+                S3_BUCKET = os.getenv('S3_BUCKET_NAME')
+                file = request.files['file']
+                if file.filename == '':
+                    return jsonify({'Uploading error':"No file selected for your post"})
+                if file and allowed_file(file):
+                    filename = secure_filename(file.filename)
+                    try:
+                        s3.uplaod_fileobj(
+                            file,filename,S3_BUCKET,
+                            ExtraArgs={
+                                "ACL":"Public-read",
+                                "ContentType":file.content_type
+                            }
+                        )
+                        return jsonify({"Mesage":"Post made"})
+                    except Exception as e:
+                        return jsonify({"Error":str({e})})
 
             db.session.add(new_post)
             db.session.commit()
