@@ -25,23 +25,23 @@ class User(db.Model):
             return user
         return None
 
-
-
     # relationships
-    posts = db.relationship('Post',backref='author',lazy='select')
-    likes = db.relationship('Like', backref='liker', lazy='select')
-    comments = db.relationship('Comment',backref='commenter',lazy='select')
+    posts = db.relationship('Post',backref='author')
+    likes = db.relationship('Like', backref='liker')
+    comments = db.relationship('Comment',backref='commenter')
 
 class Post(db.Model):
     __tablename__ = 'Posts'
     pid = db.Column(db.Integer, primary_key = True)
-    content_ = db.Column(db.Text, nullable = False)
+    text = db.Column(db.Text, nullable = True)
+    picture = db.Column(db.String,nullable=True)
+    video = db.Column(db.String,nullable=True)
     uid = db.Column(db.Integer, db.ForeignKey('Users.uid'), nullable = False)
     created_at = db.Column(db.DateTime, default=func.now())
 
     # relationships
-    likes = db.relationship('Like', backref='liked_post', lazy='select')
-    comments =db.relationship('Comment',backref='commented_post',lazy='select')
+    likes = db.relationship('Like', backref='liked_post')
+    comments =db.relationship('Comment',backref='commented_post')
 
     def __repr__(self):
         return f'Post: {self.content_}, posted at {self.created_at}'
