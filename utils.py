@@ -1,22 +1,37 @@
 from flask import jsonify
+import cloudinary
+from cloudinary.utils import cloudinary_url
+import cloudinary.uploader
 import boto3
-import os
+import os,uuid
 from dotenv import load_dotenv
+
+load_dotenv()
 
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'mp4', 'avi'}
 
-def allowed_file(filename):
-    if '.' in filename:
-        extention = filename.rsplit('.',1)[1].lower()
-        if extention in ALLOWED_EXTENSIONS:
-            return True
+cloudinary.config(
+    cloud_name = os.getenv('cloud_name'),
+    api_key = os.getenv('cloud_api_kye'),
+    api_secret = os.getenv("cloud_api_secret"),
+    secure = True
+)
+
+def upload_gallary(file):
+    upload_result = cloudinary.uploader.upload(file,public_id=str(uuid=uuid()))
+    return upload_result['secure_url']
+
+def allowed_file(file):
+
+    filename = file.filename
+    if filename and '.' in filename:
+        parts = filename.rsplit('.', 1)
+        if len(parts) == 2:
+            extension = parts[1].lower()
+            if extension in ALLOWED_EXTENSIONS:
+                return True
+        else:
+            print("Filename does not have a valid extension part.")
     else:
-        return False
+        print("Filename does not contain a dot or is empty.")
     
-# creating a client to connect with aws
-s3 = boto3.client(
-                's3',
-                aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-                aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-                region_name=os.getenv('AWS_REGION')
-        )
