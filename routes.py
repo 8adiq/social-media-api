@@ -1,6 +1,6 @@
 from flask import jsonify,request,session
 from sqlalchemy.exc import SQLAlchemyError
-from models import User,Post,Comment
+from models import User,Post,Comment,Like
 from serializer import UserSchema,PostSchema,LikeSchema
 from marshmallow import ValidationError
 from utils import allowed_file,upload_gallary
@@ -65,7 +65,6 @@ def all_routes(app,db):
         text = request.form.get('text')
         file = request.files.get('file')
 
-        
         if not file and not text:
             return jsonify({'Error':'At least text or file is required'}),401
         
@@ -96,8 +95,6 @@ def all_routes(app,db):
         db.session.add(new_post)
         db.session.commit()
         return jsonify({"Message":"Posted successfully"}),201
-
-
         
 
     @app.route('/get_all_posts')
@@ -124,17 +121,54 @@ def all_routes(app,db):
         except SQLAlchemyError as e:
             return jsonify({'Error': str({e})})
         
-    @app.route('/posts/<int:id>/like',methods=['POST'])
-    def like_post():
+    @app.route('/posts/<int:pid>/like',methods=['POST'])
+    def like_post(pid):
         """liking a post"""
+        try:
+            if  not pid or 'uid' not in session:
+                return jsonify({'Error':'You need to be logged in and select a post.'}),400
+            
+            if session.get('uid') and pid :
+                user_id = session.get('uid')
+
+                liked = Like.query.filter_by(uid=user_id,pid=pid).first()
+
+                if liked:
+                    return jsonify({'Message':"You have already liked this post"}),200
+                
+                new_like = Like(uid=user_id,pid=pid)
+
+                db.session.add(new_like)
+                db.session.commit()
+                return jsonify({'Message':'Post liked'}),200
+
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            return jsonify({'SQL Error':str({e})}),500
+        
+    @app.route('/posts/<int:pid>/comment',methods=['POST'])
+    def comment(pid):
+        """commenting on a post"""
 
         try:
-            if  'uid' or 'pid' not in session:
-                return jsonify({'Error':'You need to be logged in and select a post.'})
+            if  not pid or 'uid' not in session:
+                return jsonify({'Error':'You need to be logged in and select a post.'}),400
             
-            # liking logic
+            if session.get('uid') and pid:
+                user_id = session.get('uid')
+                commented = Comment.query.filter_by(uid=user_id,pid=pid).first()
 
-        except ValidationError as err:
-            return jsonify({'Validation Error': err.messages})
-        except SQLAlchemyError as e:
-            return jsonify({'SQL Error':str({e})})
+            if commented:
+                return jsonify({'Message':'You have already commented on this post'}),200
+            data = request.get_json()
+            comment_text = data.get('content_')
+            new_comment = Comment(content_=comment_text,uid=user_id,pid=pid)
+            db.session.add(new_comment)
+            db.session.commit()
+            return jsonify({'Message':'Commented'})
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'Error':str({e})})
+            
+
