@@ -3,9 +3,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from models import User,Post,Comment
 from serializer import UserSchema,PostSchema,LikeSchema
 from marshmallow import ValidationError
-from werkzeug.utils import secure_filename
-from utils import allowed_file,s3
-import os
+from utils import allowed_file,upload_gallary
 
 
 
@@ -14,7 +12,9 @@ def all_routes(app,db):
     def register():
         """creating a new user"""
         try:
-            user_data = request.get_json() 
+
+            user_data = request.get_json()
+            print(user_data) 
 
             user_schema = UserSchema() 
 
@@ -59,53 +59,45 @@ def all_routes(app,db):
     def post():
         """creating a new post by a logged in user"""
 
-        try:
-            if 'uid' not in session:
-                return jsonify({'Error':'You need to login first '})
-            
-            if 'file' not in request.files:
-                post_data = request.get_json()
+        if 'uid' not in session:
+            return jsonify({'Error':'You need to login first '}),401
+        
+        text = request.form.get('text')
+        file = request.files.get('file')
 
-                post_schema = PostSchema(only=('text','created_at'))
-
-                post = post_schema.load(post_data,session=db.session)
-
-                new_post = Post(
-                    text = post['text'],
-                    uid = session['uid']
-                )
-            else:
-                S3_BUCKET = os.getenv('S3_BUCKET_NAME')
+        
+        if not file and not text:
+            return jsonify({'Error':'At least text or file is required'}),401
+        
+        if file:
+        
                 file = request.files['file']
+
                 if file.filename == '':
-                    return jsonify({'Uploading error':"No file selected for your post"})
-                if file and allowed_file(file):
-                    filename = secure_filename(file.filename)
+                    return jsonify({'Uploading error':"No file selected for your post"}),400
+
+                if allowed_file(file):
                     try:
-                        s3.uplaod_fileobj(
-                            file,filename,S3_BUCKET,
-                            ExtraArgs={
-                                "ACL":"Public-read",
-                                "ContentType":file.content_type
-                            }
-                        )
-                        return jsonify({"Mesage":"Post made"})
+                        gallary_url = upload_gallary(file)
                     except Exception as e:
-                        return jsonify({"Error":str({e})})
-
-            db.session.add(new_post)
-            db.session.commit()
-
-            return jsonify({
-                'Message': 'Post successfully created',
-                'Post': post_schema.dump(new_post)}),201
+                        return jsonify({'Error':str({e})}),501
+                else:
+                    return jsonify({'Error':'Invalid valid'}),401
+                
+        else:
+            gallary_url = None
         
-        except ValidationError as err:
-            return jsonify({'Validation Error': err.messages}),400
-        
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            return jsonify({'Error':str({e})}),500
+        new_post = Post(
+            text= request.form.get('text',''),
+            uid=session['uid'],
+            gallary = gallary_url
+
+        )
+        db.session.add(new_post)
+        db.session.commit()
+        return jsonify({"Message":"Posted successfully"}),201
+
+
         
 
     @app.route('/get_all_posts')

@@ -16,7 +16,7 @@ class UserSchema(SQLAlchemyAutoSchema):
 
     # creating a model instance after loading from json
     @post_load
-    def make_user(self,data):
+    def make_user(self,data,**kwargs):
         """"""
         return User(**data)
 
@@ -57,17 +57,6 @@ class PostSchema(SQLAlchemyAutoSchema):
     uid = fields.Integer(dump_only=True)
     pid = fields.Integer(dump_only=True) 
 
-    # post content validation here
-    @validates('content_')
-    def validate_post(self,post_data):
-        """ensuring at least one of text, picture or video is provided"""
-        if not post_data.get('text') and not post_data.get('picture') and not post_data.get('video'):
-            raise ValidationError("Type a text or upload a video or picture to make a post")
-
-    @validates('picture')
-    def validate_pic(self,url):
-        valid_url = re.compile/(r'*\.(jpg|jpeg|png|gif)$')
-    
 
 
 class LikeSchema(SQLAlchemyAutoSchema):
