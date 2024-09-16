@@ -4,6 +4,7 @@ from models import User,Post,Comment,Like
 from serializer import UserSchema,PostSchema,CommentSchema
 from marshmallow import ValidationError
 from utils import allowed_file,upload_gallary
+from flask_jwt_extended import create_access_token,jwt_required, get_jwt_identity
 
 
 
@@ -14,7 +15,6 @@ def all_routes(app,db):
         try:
 
             user_data = request.get_json()
-            print(user_data) 
 
             user_schema = UserSchema() 
 
@@ -30,10 +30,10 @@ def all_routes(app,db):
                 }),201
         
         except ValidationError as err:
-            return jsonify({'Validation Error': err.messages})
+            return jsonify({'Validation Error': err.messages}),400
         except SQLAlchemyError as e:
             db.session.rollback()
-            return jsonify({'Error': str({e})})
+            return jsonify({'Error': str({e})}),500
 
     @app.route('/login', methods=['POST'])
     def login():
@@ -48,27 +48,32 @@ def all_routes(app,db):
             if not user:
                 return jsonify({'Login Error':'Username or password is incorrect'}),401
             
-            session['uid'] = user.uid
-            return jsonify({'Message':'User logged in.'}),200        
+            access_token = create_access_token(identity=user.uid)
+            return jsonify({'Message':'User logged in.',
+                            'access-token': access_token
+                            }),200        
 
         except Exception as e:
             return jsonify({'Error':str({e})})
                   
 
     @app.route('/posts',methods=['GET','POST'])
+    @jwt_required()
     def post():
         """creating a new post by a logged in user"""
 
         if request.method == 'POST':
             # creating a new post
-            if 'uid' not in session:
+
+            user_id = get_jwt_identity()
+            if  not user_id :
                 return jsonify({'Error':'You need to login first '}),401
             
             text = request.form.get('text')
             file = request.files.get('file')
 
             if not file and not text:
-                return jsonify({'Error':'At least text or file is required'}),401
+                return jsonify({'Error':'At least text or file is required'}),400
             
             if file:
             
@@ -83,13 +88,13 @@ def all_routes(app,db):
                         except Exception as e:
                             return jsonify({'Error':str({e})}),501
                     else:
-                        return jsonify({'Error':'Invalid valid'}),401
+                        return jsonify({'Error':'Invalid valid'}),400
             else:
                 gallary_url = None
             
             new_post = Post(
                 text= request.form.get('text',''),
-                uid=session['uid'],
+                uid=user_id,
                 gallary = gallary_url
 
             )
@@ -100,14 +105,12 @@ def all_routes(app,db):
         elif request.method == 'GET':
             # getting all posts
             try:
-
-                if 'uid' not in session:
-                    return jsonify({'Error':'You need to login first '})
+                user_id = get_jwt_identity()
+                if  not user_id :
+                    return jsonify({'Error':'You need to login first '}),401
 
                 posts = Post.query.all()
-
                 post_shema = PostSchema(many=True)
-
                 all_posts = post_shema.dump(posts)
 
                 return jsonify({
@@ -115,9 +118,9 @@ def all_routes(app,db):
                     'Post': all_posts
                 })
             except ValidationError as err:
-                return jsonify({'Validation Error': err.messages})
+                return jsonify({'Validation Error': err.messages}),400
             except SQLAlchemyError as e:
-                return jsonify({'Error': str({e})})
+                return jsonify({'Error': str({e})}),500
 
         
     @app.route('/posts/<int:pid>/like',methods=['POST','GET'])
@@ -125,7 +128,8 @@ def all_routes(app,db):
         """liking a post"""
         if request.method == 'POST':
             try:
-                if  not pid or 'uid' not in session:
+                user_id = get_jwt_identity()
+                if  not pid or not user_id:
                     return jsonify({'Error':'You need to be logged in and select a post.'}),400
                 
                 if session.get('uid') and pid :
@@ -156,7 +160,8 @@ def all_routes(app,db):
         if request.method == 'POST':
 
             try:
-                if  not pid or 'uid' not in session:
+                user_id = get_jwt_identity()
+                if  not pid or not user_id:
                     return jsonify({'Error':'You need to be logged in and select a post.'}),400
                 
                 if session.get('uid') and pid:

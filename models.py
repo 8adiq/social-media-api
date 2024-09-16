@@ -10,7 +10,7 @@ class User(db.Model):
     email = db.Column(db.String(100), nullable = False)
     password = db.Column(db.String(255), nullable = False)
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return f'User: {self.username}, Email: {self.email}'
     
     def set_password(self,password):
@@ -43,7 +43,7 @@ class Post(db.Model):
     comments =db.relationship('Comment',backref='commented_post')
 
     def __repr__(self):
-        return f'Post: {self.content_}, posted at {self.created_at}'
+        return f'Post: {self.text}, posted at {self.created_at}'
 
 
 class Like(db.Model):
