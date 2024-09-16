@@ -1,7 +1,7 @@
 from flask import jsonify,request,session
 from sqlalchemy.exc import SQLAlchemyError
 from models import User,Post,Comment,Like
-from serializer import UserSchema,PostSchema,LikeSchema
+from serializer import UserSchema,PostSchema,CommentSchema
 from marshmallow import ValidationError
 from utils import allowed_file,upload_gallary
 
@@ -55,120 +55,136 @@ def all_routes(app,db):
             return jsonify({'Error':str({e})})
                   
 
-    @app.route('/create_post',methods=['POST'])
+    @app.route('/posts',methods=['GET','POST'])
     def post():
         """creating a new post by a logged in user"""
 
-        if 'uid' not in session:
-            return jsonify({'Error':'You need to login first '}),401
-        
-        text = request.form.get('text')
-        file = request.files.get('file')
-
-        if not file and not text:
-            return jsonify({'Error':'At least text or file is required'}),401
-        
-        if file:
-        
-                file = request.files['file']
-
-                if file.filename == '':
-                    return jsonify({'Uploading error':"No file selected for your post"}),400
-
-                if allowed_file(file):
-                    try:
-                        gallary_url = upload_gallary(file)
-                    except Exception as e:
-                        return jsonify({'Error':str({e})}),501
-                else:
-                    return jsonify({'Error':'Invalid valid'}),401
-                
-        else:
-            gallary_url = None
-        
-        new_post = Post(
-            text= request.form.get('text',''),
-            uid=session['uid'],
-            gallary = gallary_url
-
-        )
-        db.session.add(new_post)
-        db.session.commit()
-        return jsonify({"Message":"Posted successfully"}),201
-        
-
-    @app.route('/get_all_posts')
-    def get_all_posts():
-        """getting all posts"""
-
-        try:
-
+        if request.method == 'POST':
+            # creating a new post
             if 'uid' not in session:
-                return jsonify({'Error':'You need to login first '})
+                return jsonify({'Error':'You need to login first '}),401
+            
+            text = request.form.get('text')
+            file = request.files.get('file')
 
-            posts = Post.query.all()
+            if not file and not text:
+                return jsonify({'Error':'At least text or file is required'}),401
+            
+            if file:
+            
+                    file = request.files['file']
 
-            post_shema = PostSchema(many=True)
+                    if file.filename == '':
+                        return jsonify({'Uploading error':"No file selected for your post"}),400
 
-            all_posts = post_shema.dump(posts)
+                    if allowed_file(file):
+                        try:
+                            gallary_url = upload_gallary(file)
+                        except Exception as e:
+                            return jsonify({'Error':str({e})}),501
+                    else:
+                        return jsonify({'Error':'Invalid valid'}),401
+            else:
+                gallary_url = None
+            
+            new_post = Post(
+                text= request.form.get('text',''),
+                uid=session['uid'],
+                gallary = gallary_url
 
-            return jsonify({
-                'Message':'All retrieved successfully',
-                'Post': all_posts
-            })
-        except ValidationError as err:
-            return jsonify({'Validation Error': err.messages})
-        except SQLAlchemyError as e:
-            return jsonify({'Error': str({e})})
+            )
+            db.session.add(new_post)
+            db.session.commit()
+            return jsonify({"Message":"Posted successfully"}),201
         
-    @app.route('/posts/<int:pid>/like',methods=['POST'])
+        elif request.method == 'GET':
+            # getting all posts
+            try:
+
+                if 'uid' not in session:
+                    return jsonify({'Error':'You need to login first '})
+
+                posts = Post.query.all()
+
+                post_shema = PostSchema(many=True)
+
+                all_posts = post_shema.dump(posts)
+
+                return jsonify({
+                    'Message':'All retrieved successfully',
+                    'Post': all_posts
+                })
+            except ValidationError as err:
+                return jsonify({'Validation Error': err.messages})
+            except SQLAlchemyError as e:
+                return jsonify({'Error': str({e})})
+
+        
+    @app.route('/posts/<int:pid>/like',methods=['POST','GET'])
     def like_post(pid):
         """liking a post"""
-        try:
-            if  not pid or 'uid' not in session:
-                return jsonify({'Error':'You need to be logged in and select a post.'}),400
-            
-            if session.get('uid') and pid :
-                user_id = session.get('uid')
-
-                liked = Like.query.filter_by(uid=user_id,pid=pid).first()
-
-                if liked:
-                    return jsonify({'Message':"You have already liked this post"}),200
+        if request.method == 'POST':
+            try:
+                if  not pid or 'uid' not in session:
+                    return jsonify({'Error':'You need to be logged in and select a post.'}),400
                 
-                new_like = Like(uid=user_id,pid=pid)
+                if session.get('uid') and pid :
+                    user_id = session.get('uid')
 
-                db.session.add(new_like)
-                db.session.commit()
-                return jsonify({'Message':'Post liked'}),200
+                    liked = Like.query.filter_by(uid=user_id,pid=pid).first()
 
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            return jsonify({'SQL Error':str({e})}),500
+                    if liked:
+                        return jsonify({'Message':"You have already liked this post"}),200
+                    
+                    new_like = Like(uid=user_id,pid=pid)
+
+                    db.session.add(new_like)
+                    db.session.commit()
+                    return jsonify({'Message':'Post liked'}),200
+
+            except SQLAlchemyError as e:
+                db.session.rollback()
+                return jsonify({'SQL Error':str({e})}),500
+        elif request.method == 'GET':
+
+            number_of_likes = Like.query.filter_by(pid=pid).count()
+            return jsonify({'Message':f'{number_of_likes} likes on this post'})
         
-    @app.route('/posts/<int:pid>/comment',methods=['POST'])
+    @app.route('/posts/<int:pid>/comment',methods=['POST','GET'])
     def comment(pid):
         """commenting on a post"""
+        if request.method == 'POST':
 
-        try:
-            if  not pid or 'uid' not in session:
-                return jsonify({'Error':'You need to be logged in and select a post.'}),400
+            try:
+                if  not pid or 'uid' not in session:
+                    return jsonify({'Error':'You need to be logged in and select a post.'}),400
+                
+                if session.get('uid') and pid:
+                    user_id = session.get('uid')
+                    commented = Comment.query.filter_by(uid=user_id,pid=pid).first()
+
+                if commented:
+                    return jsonify({'Message':'You have already commented on this post'}),200
+                data = request.get_json()
+                comment_text = data.get('content_')
+                new_comment = Comment(content_=comment_text,uid=user_id,pid=pid)
+                db.session.add(new_comment)
+                db.session.commit()
+                return jsonify({'Message':'Commented'})
+
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({'Error':str({e})})
             
-            if session.get('uid') and pid:
-                user_id = session.get('uid')
-                commented = Comment.query.filter_by(uid=user_id,pid=pid).first()
+        elif request.method == 'GET':
+            comments = Comment.query.filter_by(pid=pid).all()
 
-            if commented:
-                return jsonify({'Message':'You have already commented on this post'}),200
-            data = request.get_json()
-            comment_text = data.get('content_')
-            new_comment = Comment(content_=comment_text,uid=user_id,pid=pid)
-            db.session.add(new_comment)
-            db.session.commit()
-            return jsonify({'Message':'Commented'})
+            comment_schema = CommentSchema(many=True)
 
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'Error':str({e})})
+            serialized_comments = comment_schema.dump(comments)
+
+            return jsonify({'Message':'Comments retrived',
+                            'Comments': serialized_comments
+                                })
             
 
