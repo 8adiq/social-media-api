@@ -34,8 +34,7 @@ class Post(db.Model):
     __tablename__ = 'Posts'
     pid = db.Column(db.Integer, primary_key = True)
     text = db.Column(db.Text, nullable = True)
-    picture = db.Column(db.String,nullable=True)
-    video = db.Column(db.String,nullable=True)
+    gallary = db.Column(db.String,nullable=True)
     uid = db.Column(db.Integer, db.ForeignKey('Users.uid'), nullable = False)
     created_at = db.Column(db.DateTime, default=func.now())
 
