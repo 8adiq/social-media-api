@@ -63,8 +63,12 @@ class Comment(db.Model):
 
 class Blacklist(db.Model):
     __tablename__= 'Blacklists'
-    # bid = db.Column(db.Integer,primary_key=True)
-    acc_key = db.Column(db.Text, nullable=False)
+    bid = db.Column(db.Integer,primary_key=True)
+    acc_key = db.Column(db.Text, nullable=False,unique=True)
+
+
+    def __init__(self,acc_key):
+        self.acc_key = acc_key
 
 
 
