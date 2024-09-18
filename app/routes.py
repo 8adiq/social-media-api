@@ -1,6 +1,6 @@
 from flask import jsonify,request,session
 from sqlalchemy.exc import SQLAlchemyError
-from models import User,Post,Comment,Like
+from models import User,Post,Comment,Like,Blacklist
 from serializer import UserSchema,PostSchema,CommentSchema
 from marshmallow import ValidationError
 from utils import allowed_file,upload_gallary
@@ -57,11 +57,13 @@ def all_routes(app,db):
     def post():
         """creating a new post by a logged in user"""
 
+        user_id = get_jwt_identity()
+        blacklisted = Blacklist.query.filter_by(acc_key=str(user_id)).first()
+
         if request.method == 'POST':
             # creating a new post
 
-            user_id = get_jwt_identity()
-            if  not user_id :
+            if  blacklisted or not user_id :
                 return jsonify({'Error':'You need to login first '}),401
             
             text = request.form.get('text')
@@ -98,6 +100,7 @@ def all_routes(app,db):
             # getting all posts
             try:
                 user_id = get_jwt_identity()
+
                 if  not user_id :
                     return jsonify({'Error':'You need to login first '}),401
 
@@ -187,6 +190,12 @@ def all_routes(app,db):
                                 })
     
     @app.route('/logout', methods=['POST'])
+    @jwt_required()
     def logout():
         """logging out"""
+        user_id = get_jwt_identity()
+        blacklist = Blacklist(user_id)
+        db.session.add(blacklist)
+        db.session.commit()
 
+        return jsonify('Message','You\'ve logged out successfully'),200
