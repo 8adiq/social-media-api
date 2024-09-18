@@ -1,6 +1,6 @@
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from marshmallow import fields,validates,ValidationError,validate,post_load
-from models import User,Post,Like,Comment
+from models import User,Post,Comment
 from flask import jsonify
 import re
 
@@ -20,31 +20,31 @@ class UserSchema(SQLAlchemyAutoSchema):
         """"""
         return User(**data)
 
-    # username and password validation here
+    # Validation 
     @validates('username')
     def validate_username(self,value):
-        """"""
+        """validating username"""
         if any(char in value for char in " !@#$%^&*()"):
             raise ValidationError('Username should not contain spaces or special characters')
         
     @validates('email')
     def validate_email(self,value):
-        """"""
+        """checking for existing email"""
         existing_user = User.query.filter_by(email=value).first()
         if existing_user:
             raise ValidationError('Email already exists')
         
     @validates('password')
     def validate_password(self,value):
-        """"""
-        if len(value) <6: 
-            raise ValidationError('Password must be at least 6 characters')
-        if not re.search(r'[A-Z]', value):
-            raise ValidationError('Password must contain an uppercase letter')
-        if not re.search(r'[a-z]',value):
-            raise ValidationError('Password must containt a lowercase letter')
-        if not re.search(r'[!@#$%^&*()]',value):
-            raise ValidationError('Password must contain a special character')
+        """ validating password"""
+
+        if not all([
+            re.search(r'[A-Z]', value),
+            re.search(r'[a-z]',value),
+            re.search(r'[!@#$%^&*()]',value),
+            re.search(r'[0-9]',value)
+        ]):
+            raise ValidationError('Password much contain, a number, an uppercase letter, lowercase letter and a special character')
 
 class PostSchema(SQLAlchemyAutoSchema):
     class Meta:
@@ -58,11 +58,12 @@ class PostSchema(SQLAlchemyAutoSchema):
     pid = fields.Integer(dump_only=True) 
 
 
-
-class LikeSchema(SQLAlchemyAutoSchema):
+class CommentSchema(SQLAlchemyAutoSchema):
     class Meta:
-        model = Like
+        model = Comment
 
-    lid = fields.Integer(dump_only=True)
-    uid = fields.Integer(required=True)
+    cid = fields.Integer(dump_only=True)
+    uid = fields.Integer(dum_only=True)
     pid = fields.Integer(required=True)
+
+

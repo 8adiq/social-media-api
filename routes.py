@@ -15,20 +15,17 @@ def all_routes(app,db):
         try:
 
             user_data = request.get_json()
-
             user_schema = UserSchema() 
-
-            user = user_schema.load(user_data,session=db.session) 
+            user = user_schema.load(user_data,session=db.session)
             
             user.set_password(user.password) #hashing password 
-
             db.session.add(user)
             db.session.commit()
 
             return jsonify({
                 'Message': f'{user.username}\'s account has been created.',
                 }),201
-        
+            
         except ValidationError as err:
             return jsonify({'Validation Error': err.messages}),400
         except SQLAlchemyError as e:
@@ -44,7 +41,6 @@ def all_routes(app,db):
             password = data.get('password')
 
             user = User.authenticate(username,password)
-
             if not user:
                 return jsonify({'Login Error':'Username or password is incorrect'}),401
             
@@ -52,7 +48,6 @@ def all_routes(app,db):
             return jsonify({'Message':'User logged in.',
                             'access-token': access_token
                             }),200        
-
         except Exception as e:
             return jsonify({'Error':str({e})})
                   
@@ -76,9 +71,7 @@ def all_routes(app,db):
                 return jsonify({'Error':'At least text or file is required'}),400
             
             if file:
-            
                     file = request.files['file']
-
                     if file.filename == '':
                         return jsonify({'Uploading error':"No file selected for your post"}),400
 
@@ -91,12 +84,11 @@ def all_routes(app,db):
                         return jsonify({'Error':'Invalid valid'}),400
             else:
                 gallary_url = None
-            
+
             new_post = Post(
                 text= request.form.get('text',''),
                 uid=user_id,
                 gallary = gallary_url
-
             )
             db.session.add(new_post)
             db.session.commit()
@@ -124,6 +116,7 @@ def all_routes(app,db):
 
         
     @app.route('/posts/<int:pid>/like',methods=['POST','GET'])
+    @jwt_required()
     def like_post(pid):
         """liking a post"""
         if request.method == 'POST':
@@ -132,8 +125,8 @@ def all_routes(app,db):
                 if  not pid or not user_id:
                     return jsonify({'Error':'You need to be logged in and select a post.'}),400
                 
-                if session.get('uid') and pid :
-                    user_id = session.get('uid')
+                if user_id and pid :
+                    # user_id = session.get('uid')
 
                     liked = Like.query.filter_by(uid=user_id,pid=pid).first()
 
@@ -149,30 +142,31 @@ def all_routes(app,db):
             except SQLAlchemyError as e:
                 db.session.rollback()
                 return jsonify({'SQL Error':str({e})}),500
+            
         elif request.method == 'GET':
-
             number_of_likes = Like.query.filter_by(pid=pid).count()
             return jsonify({'Message':f'{number_of_likes} likes on this post'})
         
     @app.route('/posts/<int:pid>/comment',methods=['POST','GET'])
+    @jwt_required()
     def comment(pid):
         """commenting on a post"""
         if request.method == 'POST':
-
             try:
                 user_id = get_jwt_identity()
                 if  not pid or not user_id:
                     return jsonify({'Error':'You need to be logged in and select a post.'}),400
                 
-                if session.get('uid') and pid:
-                    user_id = session.get('uid')
+                if user_id and pid:
                     commented = Comment.query.filter_by(uid=user_id,pid=pid).first()
 
                 if commented:
                     return jsonify({'Message':'You have already commented on this post'}),200
+                
                 data = request.get_json()
                 comment_text = data.get('content_')
                 new_comment = Comment(content_=comment_text,uid=user_id,pid=pid)
+                
                 db.session.add(new_comment)
                 db.session.commit()
                 return jsonify({'Message':'Commented'})
@@ -191,5 +185,8 @@ def all_routes(app,db):
             return jsonify({'Message':'Comments retrived',
                             'Comments': serialized_comments
                                 })
-            
+    
+    @app.route('/logout', methods=['POST'])
+    def logout():
+        """logging out"""
 

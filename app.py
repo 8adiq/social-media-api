@@ -20,9 +20,6 @@ def create_app():
         app.config['JWT_SECRET_KEY'] = os.getenv('secret_key')
         app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # Token expires in 1 hour
 
-
-        # app.secret_key = os.getenv("secret_key")
-
         db.init_app(app)
 
         jwt = JWTManager(app)
