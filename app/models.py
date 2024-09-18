@@ -61,6 +61,12 @@ class Comment(db.Model):
     created_at = db.Column(db.DateTime, default=func.now())
 
 
+class Blacklist(db.Model):
+    __tablename__= 'Blacklists'
+    # bid = db.Column(db.Integer,primary_key=True)
+    acc_key = db.Column(db.Text, nullable=False)
+
+
 
 
 
