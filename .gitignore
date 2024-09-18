@@ -1,4 +1,4 @@
 .env
 database.sql
 git-filter-repo
-env
+env/
