@@ -16,7 +16,7 @@ def all_routes(app,db):
 
             user_data = request.get_json()
             user_schema = UserSchema() 
-            user = user_schema.load(user_data,session=db.session) 
+            user = user_schema.load(user_data,session=db.session)
             
             user.set_password(user.password) #hashing password 
             db.session.add(user)
@@ -25,7 +25,7 @@ def all_routes(app,db):
             return jsonify({
                 'Message': f'{user.username}\'s account has been created.',
                 }),201
-        
+            
         except ValidationError as err:
             return jsonify({'Validation Error': err.messages}),400
         except SQLAlchemyError as e:
@@ -185,5 +185,8 @@ def all_routes(app,db):
             return jsonify({'Message':'Comments retrived',
                             'Comments': serialized_comments
                                 })
-            
+    
+    @app.route('/logout', methods=['POST'])
+    def logout():
+        """logging out"""
 
