@@ -99,9 +99,8 @@ def all_routes(app,db):
         elif request.method == 'GET':
             # getting all posts
             try:
-                user_id = get_jwt_identity()
-
-                if  not user_id :
+            
+                if  blacklisted or not user_id :
                     return jsonify({'Error':'You need to login first '}),401
 
                 posts = Post.query.all()
@@ -122,14 +121,14 @@ def all_routes(app,db):
     @jwt_required()
     def like_post(pid):
         """liking a post"""
+        user_id = get_jwt_identity()
+        blacklisted = Blacklist.query.filter_by(acc_key=str(user_id)).first()
         if request.method == 'POST':
             try:
-                user_id = get_jwt_identity()
-                if  not pid or not user_id:
+                if  blacklisted or not pid or not user_id:
                     return jsonify({'Error':'You need to be logged in and select a post.'}),400
                 
                 if user_id and pid :
-                    # user_id = session.get('uid')
 
                     liked = Like.query.filter_by(uid=user_id,pid=pid).first()
 
@@ -147,6 +146,8 @@ def all_routes(app,db):
                 return jsonify({'SQL Error':str({e})}),500
             
         elif request.method == 'GET':
+            if blacklisted or not user_id:
+                return jsonify({"Message":"you need to log in first"}),400
             number_of_likes = Like.query.filter_by(pid=pid).count()
             return jsonify({'Message':f'{number_of_likes} likes on this post'})
         
@@ -154,11 +155,12 @@ def all_routes(app,db):
     @jwt_required()
     def comment(pid):
         """commenting on a post"""
+        user_id = get_jwt_identity()
+        blacklisted = Blacklist.query.filter_by(acc_key=str(user_id)).first()
         if request.method == 'POST':
             try:
-                user_id = get_jwt_identity()
-                if  not pid or not user_id:
-                    return jsonify({'Error':'You need to be logged in and select a post.'}),400
+                if  blacklisted or not pid or not user_id:
+                    return jsonify({'Message':'You need to be logged in and select a post.'}),400
                 
                 if user_id and pid:
                     commented = Comment.query.filter_by(uid=user_id,pid=pid).first()
@@ -179,6 +181,8 @@ def all_routes(app,db):
                 return jsonify({'Error':str({e})})
             
         elif request.method == 'GET':
+            if blacklisted or not user_id:
+                return jsonify({'Message':'You need to login first.'}),400
             comments = Comment.query.filter_by(pid=pid).all()
 
             comment_schema = CommentSchema(many=True)
