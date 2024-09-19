@@ -44,7 +44,7 @@ class UserSchema(SQLAlchemyAutoSchema):
             re.search(r'[!@#$%^&*()]',value),
             re.search(r'[0-9]',value)
         ]):
-            raise ValidationError('Password much contain, a number, an uppercase letter, lowercase letter and a special character')
+            raise ValidationError('Password much contain a number, an uppercase letter, a lowercase letter and a special character')
 
 class PostSchema(SQLAlchemyAutoSchema):
     class Meta:
