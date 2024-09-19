@@ -61,7 +61,7 @@ class PostSchema(SQLAlchemyAutoSchema):
 class CommentSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Comment
-
+    content_ = fields.String(required=True,validate=validate.Length(min=1,max=300))
     cid = fields.Integer(dump_only=True)
     uid = fields.Integer(dum_only=True)
     pid = fields.Integer(required=True)
