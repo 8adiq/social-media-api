@@ -13,7 +13,8 @@ db = SQLAlchemy()
 def create_app():
         app = Flask(__name__)
 
-        app.config['SQLALCHEMY_DATABASE_URI']  = f'postgresql://{os.getenv("user")}:{os.getenv("password")}@{os.getenv("host")}:{os.getenv("port")}/{os.getenv("dbname")}'
+        app.config['SQLALCHEMY_DATABASE_URI']  = os.getenv("DATABASE_URL")
+        # f'postgresql://{os.getenv("user")}:{os.getenv("password")}@{os.getenv("host")}:{os.getenv("port")}/{os.getenv("dbname")}'
         
         app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
