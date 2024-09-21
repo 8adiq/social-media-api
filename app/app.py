@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
+from flask_restx import Api
 
 
 load_dotenv()
@@ -12,6 +13,7 @@ db = SQLAlchemy()
 
 def create_app():
         app = Flask(__name__)
+        api = Api(app) 
 
         app.config['SQLALCHEMY_DATABASE_URI']  = os.getenv("DATABASE_URL")
         # f'postgresql://{os.getenv("user")}:{os.getenv("password")}@{os.getenv("host")}:{os.getenv("port")}/{os.getenv("dbname")}'
@@ -28,6 +30,8 @@ def create_app():
         # routes
         from routes import all_routes
         all_routes(app,db)
+
+        api.add_namespace('social')
 
         migrate = Migrate(app,db)
 
