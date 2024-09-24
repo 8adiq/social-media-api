@@ -5,7 +5,7 @@ from serializer import UserSchema,PostSchema,CommentSchema
 from marshmallow import ValidationError
 from utils import allowed_file,upload_gallary
 from flask_jwt_extended import create_access_token,jwt_required, get_jwt_identity
-from doc_model import register_model,ns,login_model
+from doc_model import register_model,ns,login_model,post_model,like_model,comment_model
 from flask_restx import Resource
 
 
@@ -68,6 +68,36 @@ def all_routes(app,db):
             except SQLAlchemyError as e:
                 db.session.rollback() # rollback session incase of a db error
                 return jsonify({'Error': str({e})}),500
+    
+    @ns.route('/login')
+    class LoginResource(Resource):
+        @ns.expect(login_model)
+        def post(self):
+            try:
+                data = request.get_json()
+                username = data.get('username')
+                password = data.get('password')
+
+                user = User.authenticate(username,password)
+
+                if not user:
+                    return {'Login Error':'Username or password incorrect'},401
+                
+                access_token = create_access_token(identity=user.uid)
+                return {'Message':'User logged in','access-token':access_token},200
+                pass
+            except (SQLAlchemyError,Exception) as e:
+                return {'Error':str({e})},501
+            
+    @ns.route('/post')
+    class PostResource(Resource):
+        @ns.expect(post_model)
+        def post(self):
+            try:
+                pass
+            except Exception as e:
+                pass
+            
 
 
     # @app.route('/login', methods=['POST'])
