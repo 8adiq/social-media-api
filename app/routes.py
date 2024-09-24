@@ -39,67 +39,6 @@ def all_routes(app,db):
     #         db.session.rollback() # rollback session incase of a db error
     #         return jsonify({'Error': str({e})}),500
 
-    @ns.route('/register')
-    class RegisterResource(Resource):
-        @ns.expect(register_model) # connecting the route to the register_model
-        def post(self):
-            """creating a new user"""
-            try:
-
-                user_data = request.get_json() # getting JSON data from request body
-
-                # using schema to validate and deserialize the inout data
-                user_schema = UserSchema() 
-                user = user_schema.load(user_data,session=db.session)
-                
-                user.set_password(user.password) #hashing password before saving to db
-                
-                # adding user to session and commiting changes to the db
-                db.session.add(user)
-                db.session.commit()
-
-                return {
-                    'Message': f'{user.username}\'s account has been created.',
-                    },201
-                
-            except ValidationError as err:
-                return {'Validation Error': err.messages},400
-            
-            except SQLAlchemyError as e:
-                db.session.rollback() # rollback session incase of a db error
-                return jsonify({'Error': str({e})}),500
-    
-    @ns.route('/login')
-    class LoginResource(Resource):
-        @ns.expect(login_model)
-        def post(self):
-            try:
-                data = request.get_json()
-                username = data.get('username')
-                password = data.get('password')
-
-                user = User.authenticate(username,password)
-
-                if not user:
-                    return {'Login Error':'Username or password incorrect'},401
-                
-                access_token = create_access_token(identity=user.uid)
-                return {'Message':'User logged in','access-token':access_token},200
-                pass
-            except (SQLAlchemyError,Exception) as e:
-                return {'Error':str({e})},501
-            
-    @ns.route('/post')
-    class PostResource(Resource):
-        @ns.expect(post_model)
-        def post(self):
-            try:
-                pass
-            except Exception as e:
-                pass
-            
-
-
     # @app.route('/login', methods=['POST'])
     # def login():
     #     """Authenticating a user before making a post"""
@@ -121,8 +60,8 @@ def all_routes(app,db):
     #                         }),200        
     #     except Exception as e:
     #         return jsonify({'Error':str({e})}),501
-                  
 
+                
     # @app.route('/posts',methods=['GET','POST'])
     # @jwt_required() # ensuing user is authenticated
     # def post():
@@ -198,6 +137,172 @@ def all_routes(app,db):
             
     #         except SQLAlchemyError as e:
     #             return jsonify({'Error': str({e})}),500
+    @ns.route('/register')
+    class RegisterResource(Resource):
+        @ns.expect(register_model) # connecting the route to the register_model
+        def post(self):
+            """creating a new user"""
+            try:
+
+                user_data = request.get_json() # getting JSON data from request body
+
+                # using schema to validate and deserialize the inout data
+                user_schema = UserSchema() 
+                user = user_schema.load(user_data,session=db.session)
+                
+                user.set_password(user.password) #hashing password before saving to db
+                
+                # adding user to session and commiting changes to the db
+                db.session.add(user)
+                db.session.commit()
+
+                return {
+                    'Message': f'{user.username}\'s account has been created.',
+                    },201
+                
+            except ValidationError as err:
+                return {'Validation Error': err.messages},400
+            
+            except SQLAlchemyError as e:
+                db.session.rollback() # rollback session incase of a db error
+                return jsonify({'Error': str({e})}),500
+    
+    @ns.route('/login')
+    class LoginResource(Resource):
+        @ns.expect(login_model)
+        def post(self):
+            try:
+                data = request.get_json()
+                username = data.get('username')
+                password = data.get('password')
+
+                user = User.authenticate(username,password)
+
+                if not user:
+                    return {'Login Error':'Username or password incorrect'},401
+                
+                access_token = create_access_token(identity=user.uid)
+                return {'Message':'User logged in','access-token':access_token},200
+                pass
+            except (SQLAlchemyError,Exception) as e:
+                return {'Error':str({e})},501
+            
+    @ns.route('/post')
+    class PostResource(Resource):
+        @ns.expect(post_model)
+        @jwt_required()
+        @ns.doc(security='Bearer Auth')
+        def post(self):
+            try:
+                user_id = get_jwt_identity()
+                blacklisted = Blacklist.query.filter_by(acc_key=str(user_id)).first()
+
+                if blacklisted or not user_id:
+                    return {'Error':'You need to log in first'},401
+                
+                text = request.form.get('text')
+                file = request.files.get('file')
+
+                # text = app.api.payload['text']
+                # file = app.api.payload.get('file')
+
+                if not file and not text:
+                    return {'Error':'At least text or a file is required'},400
+                
+                if file:
+                    if file.filename == '':
+                     return {'Uploading error':"No file selected for your post"},400
+                    
+                    if allowed_file(file):
+                        try :
+                            gallery_url = upload_gallary(file)
+                        except Exception as e:
+                            return {'Error':str({e})},501
+                    else:
+                        return {'Message':'Invalid file type'},400
+                gallery_url =None
+
+                new_post = Post(
+                text= request.form.get('text',''),
+                uid=user_id,
+                gallery = gallery_url
+                )
+
+                db.session.add(new_post)
+                db.session.commit()
+
+                return {'Message':'Post made'},201
+
+            except Exception as e:
+                return {'Error':str({e})},500
+        @jwt_required()
+        @ns.doc(security='Bearer Auth')
+        def get(self):
+            user_id = get_jwt_identity()
+            blacklisted = Blacklist.query.filter_by(acc_key=str(user_id)).first()
+            try:
+                if blacklisted or not user_id:
+                    return {'Error':'You need to log in first'},401
+                
+                posts = Post.query.all()
+
+                if not posts:
+                    return {'Message':'No posts to show'}
+                
+                post_schema = PostSchema(many=True)
+                all_posts = post_schema.dump(posts)
+
+                return {'Message':'All post retrieved','Posts':all_posts}
+            
+            except ValidationError as e:
+                return {'Error': e.messages}
+            except SQLAlchemyError as err:
+                return {'Error':str({e})}
+    @ns.route('/posts/<int:pid>/like')
+    class LikeResource(Resource):
+        @ns.expect(like_model)
+        @jwt_required()
+        @ns.doc(security='Bearer Auth')
+        def post(self,pid):
+            try:
+                user_id = get_jwt_identity()
+                blacklisted = Blacklist.query.filter_by(acc_key=str(user_id)).first()
+
+                if blacklisted or not user_id:
+                    return {'Message':'You need to login first'},401
+                
+                if user_id and pid:
+
+                    liked = Like.query.filter_by(uid=user_id,pid=pid).first()
+
+                    if liked:
+                        return {'Message':'You\'ve already liked this post'}
+                    
+                    new_like = Like(uid=user_id,pid=pid)
+
+                    db.session.add(new_like)
+                    db.session.commit()
+
+            except (SQLAlchemyError,Exception) as e:
+                return {'Error':str({e})},501
+        
+        @jwt_required()
+        @ns.doc(security='Bearer Auth')
+        def get(self,pid):
+            user_id = get_jwt_identity()
+            blacklisted = Blacklist.query.filter_by(acc_key=str(user_id)).first()
+
+            if blacklisted or not user_id:
+                return {'Message':'You need to login first'},401
+            
+            number_of_likes = Like.query.filter_by(pid=pid).count()
+
+            if not number_of_likes:
+                return {'Message':'No likes'},204
+            
+            return {'Message':f'{number_of_likes} Likes'}
+
+
 
     # @app.route('/posts/<int:pid>/like',methods=['POST','GET'])
     # @jwt_required() # ensuing user is authenticated
