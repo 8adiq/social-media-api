@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
 from flask_restx import Api
+# from doc_model import ns
 
 
 load_dotenv()
@@ -13,8 +14,18 @@ db = SQLAlchemy()
 
 def create_app():
         app = Flask(__name__)
-        api = Api(app) 
-
+        api = Api(app,
+                  title='Social Media Api',
+                  version='1.0',
+                  description='will be update later',
+                  authorizations={
+                          'Bearer Auth':{
+                                  'type':'apiKey',
+                                  'in':'header',
+                                  'name':'Authorization',
+                                  'description':'Add "Bearer <your_token>" to the Authorization header'
+                          }
+                  }) 
         app.config['SQLALCHEMY_DATABASE_URI']  = os.getenv("DATABASE_URL")
         # f'postgresql://{os.getenv("user")}:{os.getenv("password")}@{os.getenv("host")}:{os.getenv("port")}/{os.getenv("dbname")}'
         
@@ -27,11 +38,13 @@ def create_app():
 
         jwt = JWTManager(app)
 
+        from doc_model import ns
+        api.add_namespace(ns)
         # routes
         from routes import all_routes
         all_routes(app,db)
 
-        api.add_namespace('social')
+
 
         migrate = Migrate(app,db)
 

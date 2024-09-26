@@ -18,7 +18,7 @@ login_model = ns.model('LoginUser', {
 # would be passed as a form data
 post_model = ns.model('Post',{
     'text': fields.String(description='Text content of the post', required=False),
-    'file': fields.String(description='Name of the file to be uploaded', required=False),
+    'file': fields.Raw(description='Name of the file to be uploaded', required=False)
 })
 
 comment_model = ns.model('Comment',{

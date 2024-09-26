@@ -32,7 +32,7 @@ class UserSchema(SQLAlchemyAutoSchema):
         """checking for existing email"""
         existing_user = User.query.filter_by(email=value).first()
         if existing_user:
-            raise ValidationError('Email already exists')
+            raise ValidationError(' An account with this email already exists. Login instead.')
         
     @validates('password')
     def validate_password(self,value):

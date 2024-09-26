@@ -3,3 +3,4 @@ database.sql
 git-filter-repo
 env/
 __pycache__/
+migration/
