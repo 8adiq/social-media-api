@@ -5,6 +5,8 @@ This Social Media API allows users to register, log in, create posts, like posts
 JWT authentication is used to manage user sessions, and the API supports file uploads (e.g., images or videos) for posts. 
 Additionally, users can log out by blacklisting their JWT tokens.
 
+Live: https://social-media-api-e19j.onrender.com/swagger
+
 ### Features
 * User Registration & Authentication:
 
