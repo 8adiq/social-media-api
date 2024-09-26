@@ -15,6 +15,7 @@ db = SQLAlchemy()
 def create_app():
         app = Flask(__name__)
         api = Api(app,
+                  doc='/swagger',
                   title='Social Media Api',
                   version='1.0',
                   description='will be update later',
