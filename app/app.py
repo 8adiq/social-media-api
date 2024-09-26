@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
 from flask_restx import Api
-# from doc_model import ns
 
 
 load_dotenv()
