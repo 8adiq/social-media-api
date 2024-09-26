@@ -17,7 +17,7 @@ def create_app():
                   doc='/swagger',
                   title='Social Media Api',
                   version='1.0',
-                  description='will be update later',
+                  description='This Social Media API built with Flask that allows users to register, log in, create posts, like posts, and comment on them. JWT authentication is used to manage user sessions, and the API supports file uploads (e.g., images ) for posts. Additionally, users can log out by blacklisting their JWT tokens.',
                   authorizations={
                           'Bearer Auth':{
                                   'type':'apiKey',
